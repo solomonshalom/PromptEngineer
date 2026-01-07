@@ -1,0 +1,1 @@
+ALTER TABLE "gameResults" ADD COLUMN "wpmHistory" jsonb;

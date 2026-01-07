@@ -1,0 +1,3 @@
+ALTER TABLE "gameResults" ADD CONSTRAINT "wpm_check" CHECK ("gameResults"."wpm" >= 0 AND "gameResults"."wpm" <= 250);--> statement-breakpoint
+ALTER TABLE "gameResults" ADD CONSTRAINT "accuracy_check" CHECK ("gameResults"."accuracy" >= 0 AND "gameResults"."accuracy" <= 100);--> statement-breakpoint
+ALTER TABLE "gameResults" ADD CONSTRAINT "duration_check" CHECK ("gameResults"."duration" >= 0 AND "gameResults"."duration" <= 300);
