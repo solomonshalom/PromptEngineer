@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
@@ -34,7 +35,7 @@ const cursorSans = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://promptengineer.app"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://prompt-engineer-rho.vercel.app"),
   title: "promptengineer",
   description: "Learn prompt engineering through typing practice",
 };
@@ -54,6 +55,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={cursorSans.variable}>
       <body className="antialiased">
+        <Script
+          defer
+          src="https://cloud.umami.is/script.js"
+          data-website-id="22c7b991-68b7-4e0b-8819-003667b1a19a"
+          strategy="afterInteractive"
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
