@@ -73,6 +73,16 @@ const _schema = i.schema({
       usedCount: i.number(), // Track usage for rotation
       contentHash: i.string().unique().indexed(), // Prevent duplicates
     }),
+    // Shareable scores for lessons and challenges
+    sharedScores: i.entity({
+      shortId: i.string().unique().indexed(), // nanoid format for short URLs
+      type: i.string().indexed(), // "lesson" | "challenge"
+      score: i.number(), // 0-100
+      passed: i.boolean().optional(), // For lessons that have pass/fail
+      title: i.string(), // Lesson title or challenge technique
+      subtitle: i.string().optional(), // Module name or difficulty
+      createdAt: i.number().indexed(),
+    }),
   },
   links: {
     // User has many game results
@@ -123,6 +133,19 @@ const _schema = i.schema({
       },
       reverse: {
         on: "userProgress",
+        has: "one",
+        label: "user",
+      },
+    },
+    // User has many shared scores
+    userSharedScores: {
+      forward: {
+        on: "$users",
+        has: "many",
+        label: "sharedScores",
+      },
+      reverse: {
+        on: "sharedScores",
         has: "one",
         label: "user",
       },

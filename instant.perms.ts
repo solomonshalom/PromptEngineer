@@ -97,6 +97,18 @@ const rules = {
       delete: "false",
     },
   },
+  sharedScores: {
+    allow: {
+      // Anyone can view shared scores (needed for share links)
+      view: "true",
+      // Anyone can create shared scores (including anonymous users for sharing)
+      create: "true",
+      // No updates allowed - scores are immutable once shared
+      update: "false",
+      // Only the owner can delete their shared scores
+      delete: "auth.id != null && auth.id == data.ref('user.id')",
+    },
+  },
 } satisfies InstantRules;
 
 export default rules;

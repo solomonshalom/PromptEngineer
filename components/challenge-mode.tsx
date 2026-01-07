@@ -4,13 +4,16 @@ import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react
 import { getChallengeByDifficulty, type Challenge } from "@/lib/challenges";
 import { submitChallengeAction, getLLMPromptAction } from "@/app/actions/learn";
 import { getChallengeAction } from "@/app/actions/challenges";
+import { shareScoreAction } from "@/app/actions/share-score";
 import { useLocalProgress, XP_REWARDS } from "@/lib/use-local-progress";
 import { useKeyboardSounds } from "@/lib/use-keyboard-sounds";
-import { Volume2, VolumeX, Flag, RotateCcw, Loader2, Medal, Zap, Sun, Moon, Timer } from "lucide-react";
+import { Volume2, VolumeX, Flag, RotateCcw, Loader2, Medal, Zap, Sun, Moon, Timer, Share2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { TransitionLink } from "./transition-link";
+import { nanoid } from "nanoid";
+import { toast } from "sonner";
 
 gsap.registerPlugin(useGSAP);
 
@@ -63,6 +66,9 @@ export function ChallengeMode() {
   // Anti-cheat state
   const [showCopyWarning, setShowCopyWarning] = useState(false);
   const [showGoodboy, setShowGoodboy] = useState(false);
+
+  // Share state
+  const [isSharing, setIsSharing] = useState(false);
 
   const [race, setRace] = useState<RaceState>({
     enabled: false,
@@ -461,6 +467,48 @@ export function ChallengeMode() {
     }
   };
 
+  const handleShare = async () => {
+    if (!state.challenge || !state.evaluation || isSharing) return;
+
+    setIsSharing(true);
+    const shortId = nanoid(8);
+    const shareUrl = `${window.location.origin}/score/${shortId}`;
+
+    // Optimistically copy to clipboard and show success
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied to clipboard!");
+    } catch {
+      // Fallback for browsers without clipboard API or denied permissions
+      toast.error("Failed to copy link - please copy manually");
+      console.error("Clipboard API not available or permission denied");
+      setIsSharing(false);
+      return;
+    }
+
+    // Save to database in the background
+    try {
+      const result = await shareScoreAction({
+        shortId,
+        type: "challenge",
+        score: state.evaluation.score,
+        passed: state.evaluation.score >= 70,
+        title: state.challenge.technique,
+        subtitle: state.challenge.difficulty,
+      });
+
+      if (!result.success) {
+        console.error("Failed to save share:", result.error);
+        // Don't show error toast since link was already copied
+      }
+    } catch (err) {
+      console.error("Error saving share:", err);
+      // Don't show error toast since link was already copied
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   const handleNextChallenge = () => {
     // Get adaptive difficulty based on recent performance
     const difficulty = getAdaptiveChallengeDifficulty();
@@ -694,8 +742,20 @@ export function ChallengeMode() {
               </div>
             )}
 
-            {/* Next challenge button */}
-            <div className="flex justify-center">
+            {/* Action buttons */}
+            <div className="flex justify-center gap-8">
+              <button
+                onClick={handleShare}
+                disabled={isSharing}
+                className="flex items-center gap-2 text-base text-orange-500 hover:text-orange-600 transition-colors disabled:opacity-50"
+              >
+                {isSharing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Share2 className="w-4 h-4" />
+                )}
+                Share
+              </button>
               <button
                 onClick={handleNextChallenge}
                 className="flex items-center gap-2 text-base text-primary hover:text-primary/80 transition-colors"

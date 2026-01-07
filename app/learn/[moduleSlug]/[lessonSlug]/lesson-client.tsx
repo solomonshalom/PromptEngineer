@@ -3,8 +3,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Navigation } from "@/components/navigation";
-import { ChevronLeft, Lightbulb, Loader2, ArrowRight, RotateCcw, Volume2, VolumeX, Sparkles, RefreshCw, GraduationCap } from "lucide-react";
+import { ChevronLeft, Lightbulb, Loader2, ArrowRight, RotateCcw, Volume2, VolumeX, Sparkles, RefreshCw, GraduationCap, Share2 } from "lucide-react";
 import { submitPromptAction, getAdaptiveScenarioAction, recordLessonAttemptAction } from "@/app/actions/learn";
+import { shareScoreAction } from "@/app/actions/share-score";
 import { useLocalProgress } from "@/lib/use-local-progress";
 import { useKeyboardSounds } from "@/lib/use-keyboard-sounds";
 import { db } from "@/lib/instant";
@@ -13,6 +14,8 @@ import type { AdaptiveScenarioContent } from "@/lib/ai/generate-scenario";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { TransitionLink } from "@/components/transition-link";
+import { nanoid } from "nanoid";
+import { toast } from "sonner";
 
 gsap.registerPlugin(useGSAP);
 
@@ -65,6 +68,9 @@ export function LessonClient({ lesson, moduleSlug, nextLesson }: LessonClientPro
   const [adaptiveScenario, setAdaptiveScenario] = useState<AdaptiveScenarioContent | null>(null);
   const [isLoadingScenario, setIsLoadingScenario] = useState(false);
   const [useAdaptive, setUseAdaptive] = useState(false);
+
+  // Share state
+  const [isSharing, setIsSharing] = useState(false);
 
   // Keyboard sounds
   const { playPressSound, playReleaseSound, enabled: soundEnabled, toggleSound } = useKeyboardSounds({
@@ -326,6 +332,48 @@ export function LessonClient({ lesson, moduleSlug, nextLesson }: LessonClientPro
     setError(null);
     setPrompt("");
     setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
+  const handleShare = async () => {
+    if (!evaluation || isSharing) return;
+
+    setIsSharing(true);
+    const shortId = nanoid(8);
+    const shareUrl = `${window.location.origin}/score/${shortId}`;
+
+    // Optimistically copy to clipboard and show success
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied to clipboard!");
+    } catch {
+      // Fallback for browsers without clipboard API or denied permissions
+      toast.error("Failed to copy link - please copy manually");
+      console.error("Clipboard API not available or permission denied");
+      setIsSharing(false);
+      return;
+    }
+
+    // Save to database in the background
+    try {
+      const result = await shareScoreAction({
+        shortId,
+        type: "lesson",
+        score: evaluation.overallScore,
+        passed: evaluation.overallScore >= lesson.passingScore,
+        title: lesson.title,
+        subtitle: lesson.moduleTitle,
+      });
+
+      if (!result.success) {
+        console.error("Failed to save share:", result.error);
+        // Don't show error toast since link was already copied
+      }
+    } catch (err) {
+      console.error("Error saving share:", err);
+      // Don't show error toast since link was already copied
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   const handleContinue = () => {
@@ -743,6 +791,19 @@ export function LessonClient({ lesson, moduleSlug, nextLesson }: LessonClientPro
                 >
                   <RotateCcw className="w-4 h-4" />
                   Try Again
+                </button>
+
+                <button
+                  onClick={handleShare}
+                  disabled={isSharing}
+                  className="flex items-center gap-2 text-base text-orange-500 hover:text-orange-600 transition-colors disabled:opacity-50"
+                >
+                  {isSharing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Share2 className="w-4 h-4" />
+                  )}
+                  Share
                 </button>
 
                 {passed && nextLesson && (
