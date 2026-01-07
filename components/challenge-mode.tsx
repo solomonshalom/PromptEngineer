@@ -26,7 +26,7 @@ interface ChallengeState {
 interface RaceState {
   enabled: boolean;
   llmPrompt: string | null;
-  llmProgress: number; // Characters revealed by "Claude"
+  llmProgress: number; // Characters revealed by "AI"
   userFinished: boolean;
   llmFinished: boolean;
   raceStarted: boolean;
@@ -85,7 +85,7 @@ export function ChallengeMode() {
   });
   const metricsIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Ghost cursor position for Claude's typing
+  // Ghost cursor position for AI's typing
   const [ghostCursorPosition, setGhostCursorPosition] = useState<{ left: number | string; top: number }>({ left: 0, top: 0 });
 
   // Progress and XP tracking
@@ -247,10 +247,10 @@ export function ChallengeMode() {
     }
   }, [race.enabled, state.challenge, race.llmPrompt]);
 
-  // Claude "typing" animation - reveal characters over time (like ghost cursor in original)
+  // AI "typing" animation - reveal characters over time (like ghost cursor in original)
   useEffect(() => {
     if (race.enabled && race.raceStarted && race.llmPrompt && !race.llmFinished && race.startTime) {
-      // Claude types at ~60 WPM = 5 chars/sec
+      // AI types at ~60 WPM = 5 chars/sec
       const updateGhostProgress = () => {
         const elapsedMs = Date.now() - race.startTime!;
         const charsPerSecond = 5; // ~60 WPM
@@ -365,7 +365,7 @@ export function ChallengeMode() {
       return;
     }
 
-    // Stop Claude's typing if still going
+    // Stop AI's typing if still going
     if (llmIntervalRef.current) clearInterval(llmIntervalRef.current);
 
     setState(prev => ({ ...prev, isSubmitting: true, error: null }));
@@ -375,7 +375,7 @@ export function ChallengeMode() {
       const result = await submitChallengeAction(state.challenge, state.userPrompt);
 
       if (result.success && result.evaluation) {
-        // Determine if user won the race (finished before Claude)
+        // Determine if user won the race (finished before AI)
         const won = race.enabled && !race.llmFinished;
 
         // Calculate XP
@@ -567,10 +567,10 @@ export function ChallengeMode() {
               <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-muted-foreground/20 via-muted-foreground/10 to-transparent" />
             </div>
 
-            {/* Ghost cursor race mode - Claude's prompt being typed (EXACT same pattern as original) */}
+            {/* Ghost cursor race mode - AI's prompt being typed (EXACT same pattern as original) */}
             {race.enabled && race.llmPrompt && race.raceStarted && !state.evaluation && (
               <div className="mb-8 relative">
-                <div className="text-small text-muted-foreground mb-2">Claude is writing...</div>
+                <div className="text-small text-muted-foreground mb-2">AI is writing...</div>
                 <div
                   ref={llmTextRef}
                   className="text-base leading-relaxed break-words font-mono relative"
@@ -600,7 +600,7 @@ export function ChallengeMode() {
                       {/* Player name label above cursor (EXACT same as original) */}
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1">
                         <div className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap">
-                          Claude
+                          AI
                         </div>
                       </div>
                       {/* Purple cursor line (EXACT same as original) */}
@@ -654,6 +654,17 @@ export function ChallengeMode() {
               <div className={`text-xxlarge tabular-nums ${state.evaluation.score >= 70 ? 'text-green-500' : 'text-orange-500'}`}>
                 {state.evaluation.score}
               </div>
+              <p className={`text-small font-medium mt-1 ${
+                state.evaluation.score >= 90 ? 'text-green-500' :
+                state.evaluation.score >= 70 ? 'text-green-500/70' :
+                state.evaluation.score >= 50 ? 'text-orange-500' :
+                'text-red-500'
+              }`}>
+                {state.evaluation.score >= 90 ? 'Excellent!' :
+                 state.evaluation.score >= 70 ? 'Good - Passed!' :
+                 state.evaluation.score >= 50 ? 'Needs Improvement' :
+                 'Keep Practicing'}
+              </p>
               <p className="text-base text-muted-foreground mt-2">{state.evaluation.feedback}</p>
               {state.evaluation.tip && (
                 <p className="text-small text-muted-foreground/60 mt-2">{state.evaluation.tip}</p>
@@ -673,10 +684,10 @@ export function ChallengeMode() {
               </div>
             )}
 
-            {/* Claude's full prompt (in race mode) */}
+            {/* AI's full prompt (in race mode) */}
             {race.enabled && race.llmPrompt && (
               <div className="mb-8">
-                <p className="text-small text-muted-foreground mb-2">Claude&apos;s prompt:</p>
+                <p className="text-small text-muted-foreground mb-2">AI&apos;s prompt:</p>
                 <pre className="text-small text-foreground/70 whitespace-pre-wrap font-mono bg-muted/30 p-4 rounded-lg">
                   {race.llmPrompt}
                 </pre>

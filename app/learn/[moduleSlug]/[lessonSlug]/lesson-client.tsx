@@ -660,6 +660,17 @@ export function LessonClient({ lesson, moduleSlug, nextLesson }: LessonClientPro
                 <div className={`text-xxlarge tabular-nums ${passed ? 'text-green-500' : 'text-orange-500'}`}>
                   {evaluation.overallScore}
                 </div>
+                <p className={`text-small font-medium mt-1 ${
+                  evaluation.overallScore >= 90 ? 'text-green-500' :
+                  passed ? 'text-green-500/70' :
+                  evaluation.overallScore >= 50 ? 'text-orange-500' :
+                  'text-red-500'
+                }`}>
+                  {evaluation.overallScore >= 90 ? 'Excellent!' :
+                   passed ? 'Good - Passed!' :
+                   evaluation.overallScore >= 50 ? 'Needs Improvement' :
+                   'Keep Practicing'}
+                </p>
                 <p className="text-base text-muted-foreground mt-2">
                   {passed
                     ? "Great job! You've demonstrated understanding of this technique."

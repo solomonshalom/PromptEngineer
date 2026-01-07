@@ -5,7 +5,7 @@ Master the art of prompt engineering through interactive typing challenges. Lear
 ## Features
 
 - **Challenge Mode** — Real-time prompt engineering challenges with AI evaluation
-- **Race Mode** — Compete against Claude's typing speed
+- **Race Mode** — Compete against AI's typing speed
 - **Adaptive Difficulty** — Challenges adjust based on your performance
 - **Lesson Curriculum** — Structured modules covering prompt engineering fundamentals to advanced techniques
 - **Live WPM Tracking** — Real-time words-per-minute with history charts
