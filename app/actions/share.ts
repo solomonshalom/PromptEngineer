@@ -16,6 +16,7 @@ export async function shareGameResult(data: {
   accuracy: number;
   duration: number;
   wpmHistory?: Array<{ time: number; wpm: number }>;
+  existingGameResultId?: string; // If provided, reuse this gameResult instead of creating a new one
 }) {
   // Input validation with strict bounds
   if (typeof data.accuracy !== "number" || data.accuracy < 0 || data.accuracy > 100) {
@@ -71,37 +72,49 @@ export async function shareGameResult(data: {
       }
     }
 
-    const gameResultId = id();
     const shareableResultId = id();
 
-    // Create both records and link them atomically
-    const transactions = [
-      adminDb.tx.gameResults[gameResultId].update({
-        wpm: Math.round(data.wpm),
-        accuracy: Math.round(data.accuracy),
-        duration: Math.round(data.duration),
-        textExcerpt: "",
-        wpmHistory: data.wpmHistory || null,
-        createdAt: Date.now(),
-      }),
+    // If we have an existing gameResultId (from auto-save), reuse it
+    // Otherwise create a new gameResult (for anonymous users or when auto-save didn't run)
+    const gameResultId = data.existingGameResultId || id();
+    const shouldCreateGameResult = !data.existingGameResultId;
+
+    // Build transactions
+    const transactions = [];
+
+    // Only create gameResult if we don't have an existing one
+    if (shouldCreateGameResult) {
+      transactions.push(
+        adminDb.tx.gameResults[gameResultId].update({
+          wpm: Math.round(data.wpm),
+          accuracy: Math.round(data.accuracy),
+          duration: Math.round(data.duration),
+          textExcerpt: "",
+          wpmHistory: data.wpmHistory || null,
+          createdAt: Date.now(),
+        })
+      );
+
+      // Link to user only for new gameResults (existing ones are already linked)
+      if (verifiedUserId) {
+        transactions.push(
+          adminDb.tx.gameResults[gameResultId].link({
+            user: verifiedUserId,
+          })
+        );
+      }
+    }
+
+    // Always create shareableResult and link to gameResult
+    transactions.push(
       adminDb.tx.shareableResults[shareableResultId].update({
         shortId: data.shortId,
         createdAt: Date.now(),
       }),
-      // Link shareable result to game result
       adminDb.tx.shareableResults[shareableResultId].link({
         gameResult: gameResultId,
-      }),
-    ];
-
-    // Only link to user if we verified their identity server-side
-    if (verifiedUserId) {
-      transactions.push(
-        adminDb.tx.gameResults[gameResultId].link({
-          user: verifiedUserId,
-        })
-      );
-    }
+      })
+    );
 
     await adminDb.transact(transactions);
 

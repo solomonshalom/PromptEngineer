@@ -6,6 +6,7 @@ import { getRandomExcerpt } from "@/lib/excerpts";
 import { nanoid } from "nanoid";
 import { toast } from "sonner";
 import { shareGameResult } from "@/app/actions/share";
+import { saveGameResult } from "@/app/actions/save-game";
 import { useKeyboardSounds } from "@/lib/use-keyboard-sounds";
 import { Volume2, VolumeX, Medal, Flag } from "lucide-react";
 import Link from "next/link";
@@ -59,6 +60,11 @@ export function TypingGame({ onGameFinish }: TypingGameProps) {
   
   // Keyboard sounds
   const { playPressSound, playReleaseSound, enabled: soundEnabled, toggleSound } = useKeyboardSounds({ initialEnabled: true, volume: 0.9 });
+
+  // Track if current game has been auto-saved (prevents duplicate saves)
+  const hasSavedRef = useRef(false);
+  // Store the gameResultId from auto-save to pass to share (prevents duplicate records)
+  const savedGameResultIdRef = useRef<string | undefined>(undefined);
 
   // Helper function to calculate correct characters
   const getCorrectChars = useCallback((userInput: string, text: string): number => {
@@ -332,7 +338,35 @@ export function TypingGame({ onGameFinish }: TypingGameProps) {
     }
   }, [state.userInput, state.text, state.isGameActive, state.isGameFinished, state.startTime, onGameFinish, getCorrectChars, wpmHistory]);
 
+  // Auto-save game result when game finishes (for logged-in users)
+  useEffect(() => {
+    if (state.isGameFinished && !hasSavedRef.current && state.finalWPM > 0) {
+      hasSavedRef.current = true;
+
+      // Save in background - don't await, don't block UI
+      saveGameResult({
+        wpm: state.finalWPM,
+        accuracy: state.finalAccuracy,
+        duration: 30 - state.timer,
+        wpmHistory: wpmHistory.length > 0 ? wpmHistory : undefined,
+      })
+        .then((result) => {
+          // Store the gameResultId for share to reuse
+          if (result.gameResultId) {
+            savedGameResultIdRef.current = result.gameResultId;
+          }
+        })
+        .catch((error) => {
+          // Silently fail - auto-save errors shouldn't interrupt the user
+          console.error("Auto-save failed:", error);
+        });
+    }
+  }, [state.isGameFinished, state.finalWPM, state.finalAccuracy, state.timer, wpmHistory]);
+
   const handleRestart = () => {
+    // Reset the saved flag and gameResultId for the new game
+    hasSavedRef.current = false;
+    savedGameResultIdRef.current = undefined;
     setState({
       text: getRandomExcerpt(),
       userInput: "",
@@ -366,6 +400,7 @@ export function TypingGame({ onGameFinish }: TypingGameProps) {
 
     // Save to database in the background
     // User identity is verified server-side for security
+    // Pass existingGameResultId to avoid creating duplicate records
     try {
       await shareGameResult({
         shortId,
@@ -373,6 +408,7 @@ export function TypingGame({ onGameFinish }: TypingGameProps) {
         accuracy: state.finalAccuracy,
         duration: 30 - state.timer,
         wpmHistory: wpmHistory.length > 0 ? wpmHistory : undefined,
+        existingGameResultId: savedGameResultIdRef.current,
       });
     } catch {
       toast.error("Failed to save results");
